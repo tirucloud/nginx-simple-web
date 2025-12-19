@@ -1,27 +1,42 @@
-# Use specific version (avoid :latest for production)
+# ---------------------------
+# Stage 1: Build Stage
+# ---------------------------
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+# Copy only required files
+COPY index.html .
+
+# Optional: validate HTML (can be extended to build React/Vue/Angular)
+RUN echo "Build completed"
+
+# ---------------------------
+# Stage 2: Runtime Stage
+# ---------------------------
 FROM nginx:1.26-alpine
 
-# Remove default config
+# Remove default nginx config
 RUN rm /etc/nginx/conf.d/default.conf
 
-# Copy custom nginx configuration
+# Copy custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy static website files
-COPY index.html /usr/share/nginx/html/
+# Copy built artifacts from builder stage
+COPY --from=builder /app/index.html /usr/share/nginx/html/
 
-# Set proper permissions
+# Set correct permissions
 RUN chown -R nginx:nginx /usr/share/nginx/html
 
-# Switch to non-root user (security best practice)
+# Use non-root user
 USER nginx
 
 # Expose HTTP port
 EXPOSE 80
 
-# Healthcheck for container monitoring
+# Health check
 HEALTHCHECK --interval=30s --timeout=3s \
   CMD wget -q -O - http://localhost || exit 1
 
-# Start nginx
+# Start Nginx
 CMD ["nginx", "-g", "daemon off;"]
